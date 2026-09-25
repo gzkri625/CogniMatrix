@@ -73,8 +73,9 @@ güvenli ödeme sayfasına yönlenir (kart bilgisi bu siteye hiç gelmez), 3D Se
 (1/2/3/6) iyzico tarafında yapılır. Dönüşte sonuç sunucu tarafında iyzico'ya sorularak
 doğrulanır; tarayıcı "ödendi" kararını kendisi vermez.
 
-iyzico'nun gizli anahtarı tarayıcıya konamayacağı için bu kısım `api/odeme/` altındaki
-sunucusuz fonksiyonlarla çalışır:
+iyzico'nun gizli anahtarı tarayıcıya konamayacağı için bu kısım sunucusuz fonksiyonlarla çalışır.
+Kod `server/odeme.ts`'te; `functions/api/odeme/` (Cloudflare Pages) ve `api/odeme/` (Vercel) bunu
+çağıran ince giriş dosyalarıdır, yani iki platformda da aynı adreslerle çalışır:
 
 | Uç nokta | Görevi |
 |---|---|
@@ -87,23 +88,47 @@ Tutar, veritabanındaki siparişten okunur (tarayıcıdan alınmaz) ve iyzico'nu
 sipariş tutarıyla karşılaştırılır; ödeme sonucu siparişe sunucu tarafında yazılır. iyzico veya Supabase
 sunucu anahtarları tanımlı değilse kart seçeneği otomatik gizlenir; kapıda ödeme ve havale çalışır.
 
-## Yayına alma (Vercel — iyzico ile)
+## Yayına alma — önerilen: Cloudflare Pages (ücretsiz, ticari kullanım serbest)
 
-1. [vercel.com](https://vercel.com)'a GitHub ile girin → **Add New → Project** → bu repoyu seçin.
-   Vite otomatik tanınır (build: `npm run build`, çıktı: `dist`), `api/` fonksiyonları da otomatik yayınlanır.
-2. **Settings → Environment Variables**'a `.env.example` içindeki değişkenlerin hepsini girin
-   (Supabase: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; iyzico:
-   `IYZICO_*`).
-   - Önce test: [sandbox-merchant.iyzipay.com](https://sandbox-merchant.iyzipay.com)'dan ücretsiz sandbox
-     hesabı açın, API anahtarlarını girin, `IYZICO_BASE_URL=https://sandbox-api.iyzipay.com`.
-     Test kartı: `5528 7900 0000 0008`, SKT ileri bir tarih, CVC `123`.
-   - Canlı: iyzico üye işyeri başvurusu onaylanınca canlı anahtarları girin ve
-     `IYZICO_BASE_URL=https://api.iyzipay.com` yapın.
-3. Değişkenleri girdikten sonra **Redeploy**.
+Ücretsiz kurulum: **Cloudflare Pages** (site + ödeme fonksiyonları) + **Supabase Free** (veritabanı) + iyzico
+(aylık ücret yok, satış başına komisyon).
 
-Yerel geliştirme için fonksiyonlarla birlikte: `npx vercel dev` (sadece arayüz için `npm run dev` yeterli).
+1. Önce yukarıdaki **Veritabanı (Supabase)** adımlarını yapın ve Legacy API Keys'ten `anon` ve `service_role`
+   anahtarlarını alın.
+2. [dash.cloudflare.com](https://dash.cloudflare.com)'da ücretsiz hesap açın.
+3. **Workers & Pages → Create → Pages → Connect to Git** → GitHub'ı bağlayın → bu repoyu seçin.
+4. Build ayarları:
+   - Framework preset: **None** (veya Vite)
+   - Build command: `npm run build`
+   - Build output directory: `dist`
+   - Production branch: `main`
+5. **Environment variables** (aynı ekranda, *Save and Deploy*'dan önce) — `.env.example`'daki hepsi:
+   `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `IYZICO_API_KEY`, `IYZICO_SECRET_KEY`, `IYZICO_BASE_URL`. Gizli olanları (*service_role*, iyzico anahtarları)
+   **Encrypt** seçeneğiyle girin.
+6. **Save and Deploy**. Birkaç dakika sonra site `https://<proje>.pages.dev` adresinde yayında olur.
+   `functions/` klasöründeki ödeme fonksiyonları otomatik yayınlanır.
+7. Supabase → **Authentication → URL Configuration**: *Site URL* = `https://<proje>.pages.dev`,
+   *Redirect URLs*'e `https://<proje>.pages.dev/**` ekleyin.
+8. Kontrol: `https://<proje>.pages.dev/api/odeme/durum` → `{"aktif":true,"test":true}`.
+   iyzico test kartı: `5528 7900 0000 0008`, SKT ileri bir tarih, CVC `123`.
 
-`.github/workflows/deploy.yml` ayrıca GitHub Pages'e demo modunda yayın yapar (veritabanı ve online ödeme yok).
+Değişken değiştirdikten sonra **Deployments → (son yayın) → ⋯ → Retry deployment** ile yeniden yayınlayın
+(`VITE_` ile başlayanlar derleme sırasında siteye gömülür). Kendi alan adınız için: projede **Custom domains**.
+
+Yerelde fonksiyonlarla birlikte denemek için: `npm run build && npx wrangler pages dev dist`
+(sunucu değişkenleri repo kökünde `.dev.vars` dosyasına, `.env.example` biçiminde).
+
+### Alternatif: Vercel
+
+Aynı kod Vercel'de de çalışır (`api/` klasörü). Vercel'in ücretsiz Hobby planı yalnızca ticari olmayan
+kullanım içindir; satış yapan bir site için Pro plan gerekir. Kurulum: Vercel'e GitHub ile girin →
+**Add New → Project** → repoyu seçin → yukarıdaki değişkenleri girin → **Deploy**, sonra Supabase'te Site URL'i güncelleyin.
+
+### GitHub Pages
+
+`.github/workflows/deploy.yml` siteyi GitHub Pages'e **demo modunda** yayınlar (veritabanı ve online ödeme yok).
+GitHub Pages kullanım şartları e-ticaret sitesi barındırmaya izin vermediği için yalnızca tanıtım/önizleme içindir.
 
 ## Mimari
 
@@ -118,9 +143,12 @@ src/
   whatsapp.ts       WhatsApp sipariş mesajı ve wa.me bağlantısı
   payment.ts        Arayüzün iyzico fonksiyonlarıyla konuşan kısmı
 api/
-  _lib/iyzico.ts    iyzico REST istemcisi (IYZWSv2 imzalama)
-  _lib/db.ts        Sunucu tarafı Supabase erişimi (service role)
-  odeme/*.ts        Sunucusuz ödeme fonksiyonları (Vercel)
+  odeme/*.ts        Vercel giriş dosyaları
+functions/api/odeme/ Cloudflare Pages Functions giriş dosyaları
+server/
+  odeme.ts          Ödeme uç noktaları (platformdan bağımsız)
+  iyzico.ts         iyzico REST istemcisi (IYZWSv2 imzalama, Web Crypto)
+  db.ts             Sunucu tarafı Supabase erişimi (service role)
   pages/            Home, Storefront, Checkout, OrderDone, Panel, NewShop
   components/       ShopLayout (dükkan kabuğu), QtyControl, AuthForm
 supabase/

@@ -1,17 +1,19 @@
 // Server-side Supabase access with the service role key (bypasses RLS).
 // Only used by the payment functions; never expose this key to the browser.
 
-const url = () => (process.env.SUPABASE_URL ?? '').replace(/\/$/, '');
-const key = () => process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+import type { Env } from './env';
 
-export const dbConfigured = () => Boolean(url() && key());
+const url = (env: Env) => (env.SUPABASE_URL ?? '').replace(/\/$/, '');
+const key = (env: Env) => env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 
-async function rest(path: string, init: RequestInit = {}) {
-  const res = await fetch(`${url()}/rest/v1/${path}`, {
+export const dbConfigured = (env: Env) => Boolean(url(env) && key(env));
+
+async function rest(env: Env, path: string, init: RequestInit = {}) {
+  const res = await fetch(`${url(env)}/rest/v1/${path}`, {
     ...init,
     headers: {
-      apikey: key(),
-      Authorization: `Bearer ${key()}`,
+      apikey: key(env),
+      Authorization: `Bearer ${key(env)}`,
       'Content-Type': 'application/json',
       Prefer: 'return=representation',
       ...init.headers,
@@ -40,12 +42,12 @@ export interface OrderRow {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function getOrder(id: string): Promise<OrderRow | null> {
+export async function getOrder(env: Env, id: string): Promise<OrderRow | null> {
   if (!UUID.test(id)) return null;
-  const rows = (await rest(`orders?id=eq.${id}&select=*,shops(slug,name,address,district,city)`)) as OrderRow[];
+  const rows = (await rest(env, `orders?id=eq.${id}&select=*,shops(slug,name,address,district,city)`)) as OrderRow[];
   return rows[0] ?? null;
 }
 
-export async function updateOrder(id: string, patch: Record<string, unknown>, onlyIf = '') {
-  return (await rest(`orders?id=eq.${id}${onlyIf}`, { method: 'PATCH', body: JSON.stringify(patch) })) as OrderRow[];
+export async function updateOrder(env: Env, id: string, patch: Record<string, unknown>, onlyIf = '') {
+  return (await rest(env, `orders?id=eq.${id}${onlyIf}`, { method: 'PATCH', body: JSON.stringify(patch) })) as OrderRow[];
 }
