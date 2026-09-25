@@ -32,6 +32,7 @@ export interface Shop {
   phone: string; // digits only, with country code, e.g. 905321234567
   address: string;
   district: string;
+  city?: string; // il, used for iyzico addresses (default İstanbul)
   hours: string;
   deliveryFee: number;
   freeDeliveryOver: number; // 0 = never free
@@ -61,13 +62,22 @@ export interface Order {
   createdAt: string;
   customerName: string;
   customerPhone: string;
+  email?: string;
   address: string;
   note: string;
   fulfillment: 'teslimat' | 'gel-al';
-  payment: 'kapıda nakit' | 'kapıda kart' | 'havale';
+  payment: 'kapıda nakit' | 'kapıda kart' | 'havale' | 'online kart';
   lines: OrderLine[];
   subtotal: number;
   deliveryFee: number;
   total: number;
   status: OrderStatus;
+  /** Only for payment === 'online kart'. */
+  online?: {
+    state: 'bekliyor' | 'ödendi' | 'başarısız';
+    paymentId?: string;
+    paidAmount?: number;
+    card?: string;
+    error?: string;
+  };
 }

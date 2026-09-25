@@ -16,7 +16,9 @@ export function orderMessage(order: Order, shop: Shop) {
     `Ad: ${order.customerName}`,
     `Tel: ${order.customerPhone}`,
     order.fulfillment === 'teslimat' ? `Adres: ${order.address}` : 'Mağazadan gelip alacağım',
-    `Ödeme: ${order.payment}`,
+    order.online?.state === 'ödendi'
+      ? `Ödeme: online kart ile ÖDENDİ (${money(order.online.paidAmount ?? order.total)}, iyzico no ${order.online.paymentId})`
+      : `Ödeme: ${order.payment}`,
     order.note ? `Not: ${order.note}` : null,
   ]
     .filter((l) => l !== null)

@@ -4,6 +4,7 @@ import { NotFound } from '../App';
 import ShopLayout from '../components/ShopLayout';
 import { money, qtyLabel, round2, uid } from '../format';
 import { useCart, useStore } from '../store';
+import { startPayment, usePaymentStatus } from '../payment';
 import type { Order } from '../types';
 import { Totals } from './Storefront';
 
@@ -15,9 +16,13 @@ export default function Checkout() {
   const navigate = useNavigate();
   // placeOrder empties the cart; don't let the empty-cart redirect win the race.
   const placed = useRef(false);
+  const online = usePaymentStatus();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
+    email: '',
     address: '',
     note: '',
     fulfillment: 'teslimat' as Order['fulfillment'],
@@ -32,9 +37,11 @@ export default function Checkout() {
   const total = round2(cart.subtotal + deliveryFee);
   const belowMin = cart.subtotal < shop.minOrder;
 
-  const submit = (e: FormEvent) => {
+  const payOnline = form.payment === 'online kart';
+
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (belowMin) return;
+    if (belowMin || busy) return;
     const order: Order = {
       id: uid().toUpperCase().slice(0, 6),
       shopSlug: slug,
@@ -52,7 +59,24 @@ export default function Checkout() {
       deliveryFee,
       total,
       status: 'yeni',
+      email: form.email || undefined,
+      ...(payOnline && { online: { state: 'bekliyor' as const } }),
     };
+    if (payOnline) {
+      // Create the iyzico form first so a failure leaves the cart intact.
+      setBusy(true);
+      setError('');
+      try {
+        const url = await startPayment(order, shop);
+        placed.current = true;
+        placeOrder(order);
+        window.location.href = url;
+      } catch (err) {
+        setError((err as Error).message);
+        setBusy(false);
+      }
+      return;
+    }
     placed.current = true;
     placeOrder(order);
     navigate(`/${slug}/siparis/${order.id}`, { replace: true });
@@ -85,6 +109,12 @@ export default function Checkout() {
               onChange={(e) => set('customerPhone', e.target.value)}
             />
           </label>
+          {payOnline && (
+            <label>
+              E-posta (ödeme makbuzu için)
+              <input required type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
+            </label>
+          )}
           {form.fulfillment === 'teslimat' ? (
             <label>
               Adres
@@ -103,16 +133,19 @@ export default function Checkout() {
           </label>
           <h3>Ödeme</h3>
           <div className="radio-list">
-            {(['kapıda nakit', 'kapıda kart', 'havale'] as const).map((p) => (
+            {(online?.aktif ? PAYMENTS : PAYMENTS.slice(1)).map((p) => (
               <label key={p} className="radio">
                 <input type="radio" name="payment" checked={form.payment === p} onChange={() => set('payment', p)} />
-                {p === 'kapıda nakit' ? '💵 Kapıda nakit' : p === 'kapıda kart' ? '💳 Kapıda kredi kartı' : '🏦 Havale / EFT'}
+                {PAYMENT_LABELS[p]}
+                {p === 'online kart' && online?.test && <span className="tag">test modu</span>}
               </label>
             ))}
           </div>
+          {payOnline && <p className="small muted">🔒 Kart bilgileriniz iyzico güvenli ödeme sayfasında girilir; bu siteye kaydedilmez.</p>}
+          {error && <p className="warn">⚠️ {error}</p>}
           {belowMin && <p className="warn">Minimum sipariş tutarı {money(shop.minOrder)}.</p>}
-          <button className="btn btn-block" disabled={belowMin}>
-            Siparişi ver · {money(total)}
+          <button className="btn btn-block" disabled={belowMin || busy}>
+            {busy ? 'Ödeme sayfası açılıyor…' : payOnline ? `Kartla öde · ${money(total)}` : `Siparişi ver · ${money(total)}`}
           </button>
         </form>
 
@@ -132,3 +165,11 @@ export default function Checkout() {
     </ShopLayout>
   );
 }
+
+const PAYMENTS = ['online kart', 'kapıda nakit', 'kapıda kart', 'havale'] as const;
+export const PAYMENT_LABELS: Record<Order['payment'], string> = {
+  'online kart': '💳 Online kredi / banka kartı (iyzico)',
+  'kapıda nakit': '💵 Kapıda nakit',
+  'kapıda kart': '💳 Kapıda kredi kartı',
+  havale: '🏦 Havale / EFT',
+};

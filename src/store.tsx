@@ -33,6 +33,7 @@ interface Store extends Persisted {
   clearCart: (slug: string) => void;
   placeOrder: (order: Order) => void;
   setOrderStatus: (orderId: string, status: OrderStatus) => void;
+  updateOrder: (orderId: string, patch: Partial<Order>) => void;
   resetDemo: () => void;
 }
 
@@ -93,6 +94,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setData((d) => ({
           ...d,
           orders: d.orders.map((o) => (o.id === orderId ? { ...o, status } : o)),
+        })),
+      updateOrder: (orderId, patch) =>
+        setData((d) => ({
+          ...d,
+          orders: d.orders.map((o) => (o.id === orderId ? { ...o, ...patch } : o)),
         })),
       resetDemo: () => setData({ shops: seedShops, orders: [], carts: {} }),
     }),

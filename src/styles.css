@@ -162,3 +162,7 @@ form.narrow { margin: 48px auto; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 16px; margin-top: 12px; }
 .form-grid .full { grid-column: 1 / -1; }
 .form-grid .w-sm { max-width: 120px; }
+.pay-ok { background: color-mix(in srgb, var(--ok) 20%, transparent); color: var(--ok); }
+.pay-fail { background: #fee2e2; color: #b91c1c; }
+.pay-wait { background: #fef3c7; color: #92400e; }
+label.radio .tag { margin-left: 4px; }

@@ -124,6 +124,17 @@ function Orders({ shop }: { shop: Shop }) {
             <div className="small muted">
               {new Date(o.createdAt).toLocaleString('tr-TR')} · <a href={`tel:${o.customerPhone}`}>{o.customerPhone}</a> ·{' '}
               {o.fulfillment === 'teslimat' ? `🛵 ${o.address}` : '🏃 Gel-al'} · {o.payment}
+              {o.online && (
+                <>
+                  {' '}
+                  <span className={`tag pay-${o.online.state === 'ödendi' ? 'ok' : o.online.state === 'başarısız' ? 'fail' : 'wait'}`}>
+                    {o.online.state === 'ödendi'
+                      ? `✓ Ödendi ${money(o.online.paidAmount ?? 0)}`
+                      : o.online.state === 'başarısız' ? 'Ödeme başarısız' : 'Ödeme bekleniyor'}
+                  </span>
+                  {o.online.paymentId && <span className="small"> · iyzico no {o.online.paymentId}</span>}
+                </>
+              )}
             </div>
             <ul className="summary-list">
               {o.lines.map((l) => (
