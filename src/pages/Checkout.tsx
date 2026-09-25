@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import Link from '../components/AppLink';
 import { Loading, NotFound } from '../App';
 import ShopLayout from '../components/ShopLayout';
 import { money, qtyLabel, round2 } from '../format';

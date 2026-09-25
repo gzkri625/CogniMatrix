@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import Link from '../components/AppLink';
 import { Loading, NotFound } from '../App';
 import AuthForm from '../components/AuthForm';
 import ConfirmButton from '../components/ConfirmButton';

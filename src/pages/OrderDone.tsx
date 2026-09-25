@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import Link from '../components/AppLink';
 import { Loading, NotFound } from '../App';
 import ShopLayout from '../components/ShopLayout';
 import { money, qtyLabel } from '../format';

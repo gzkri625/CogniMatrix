@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from '../components/AppLink';
 import { Loading, PlatformShell } from '../App';
 import ConfirmButton from '../components/ConfirmButton';
 import { useStore } from '../store';

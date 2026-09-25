@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import Link from './AppLink';
 import type { Shop } from '../types';
 
 /** Branded shell shared by every page of a single shop's site. */

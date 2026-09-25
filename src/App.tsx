@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import Link from './components/AppLink';
 import AuthForm from './components/AuthForm';
 import Home from './pages/Home';
 import NewShop from './pages/NewShop';

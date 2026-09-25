@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import Link from '../components/AppLink';
 import { Loading, NotFound } from '../App';
 import QtyControl from '../components/QtyControl';
 import ShopLayout from '../components/ShopLayout';
