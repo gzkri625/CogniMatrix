@@ -37,6 +37,12 @@ herhangi bir statik barındırmaya doğrudan yüklenebilir.
 Demo dükkanların panel PIN'i: **1234**. Ana sayfanın altındaki "Demo verilerini sıfırla" ile
 başlangıç verilerine dönülür.
 
+## Yayına alma (GitHub Pages)
+
+`.github/workflows/deploy.yml`, `main` dalına her push'ta siteyi derleyip GitHub Pages'e yükler.
+Bir kerelik ayar: GitHub'da **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+Site adresi: `https://gzkri625.github.io/CogniMatrix/`
+
 ## Mimari
 
 React 19 + TypeScript + Vite, React Router (HashRouter).
