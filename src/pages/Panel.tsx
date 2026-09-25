@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loading, NotFound } from '../App';
 import AuthForm from '../components/AuthForm';
+import ConfirmButton from '../components/ConfirmButton';
 import ShopLayout from '../components/ShopLayout';
 import { money, qtyLabel } from '../format';
 import { useShopOrders, useStore } from '../store';
@@ -193,7 +194,7 @@ function Products({ shop }: { shop: Shop }) {
               </td>
               <td className="nowrap">
                 <button className="link" onClick={() => setEditing(p)}>Düzenle</button>{' '}
-                <button className="link danger" onClick={() => confirm(`"${p.name}" silinsin mi?`) && run(deleteProduct(shop.slug, p.id)).catch(() => {})}>Sil</button>
+                <ConfirmButton className="link danger" confirmText="Silinsin mi?" onConfirm={() => run(deleteProduct(shop.slug, p.id)).catch(() => {})}>Sil</ConfirmButton>
               </td>
             </tr>
           ))}

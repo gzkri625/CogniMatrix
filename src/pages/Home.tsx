@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loading, PlatformShell } from '../App';
+import ConfirmButton from '../components/ConfirmButton';
 import { useStore } from '../store';
 import { money } from '../format';
 
@@ -92,9 +93,9 @@ export default function Home() {
         <div className="wrap row">
           <span>© {new Date().getFullYear()} Esnaf Çarşı</span>
           {backend.resetDemo && (
-            <button className="link" onClick={() => confirm('Tüm demo verileri sıfırlansın mı?') && backend.resetDemo!()}>
+            <ConfirmButton confirmText="Emin misiniz? Tekrar tıklayın" onConfirm={() => backend.resetDemo!()}>
               Demo verilerini sıfırla
-            </button>
+            </ConfirmButton>
           )}
         </div>
       </footer>
