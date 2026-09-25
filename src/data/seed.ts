@@ -1,5 +1,9 @@
 import type { Product, Shop } from '../types';
 
+export const DEMO_USER_ID = 'demo-esnaf';
+export const DEMO_EMAIL = 'demo@esnafcarsi.com';
+export const DEMO_PASSWORD = 'demo1234';
+
 type P = Omit<Product, 'id' | 'inStock'> & { inStock?: boolean };
 
 const withIds = (slug: string, items: P[]): Product[] =>
@@ -21,7 +25,8 @@ export const seedShops: Shop[] = [
     deliveryFee: 25,
     freeDeliveryOver: 250,
     minOrder: 75,
-    pin: '1234',
+    ownerId: DEMO_USER_ID,
+    city: 'İstanbul',
     products: withIds('yildiz-firini', [
       { name: 'Somun Ekmek', description: '250 g, taş fırın', price: 12.5, unit: 'adet', category: 'Ekmek', emoji: '🍞' },
       { name: 'Tam Buğday Ekmeği', description: '400 g, ekşi mayalı', price: 35, unit: 'adet', category: 'Ekmek', emoji: '🥖' },
@@ -48,7 +53,8 @@ export const seedShops: Shop[] = [
     deliveryFee: 30,
     freeDeliveryOver: 400,
     minOrder: 150,
-    pin: '1234',
+    ownerId: DEMO_USER_ID,
+    city: 'İstanbul',
     products: withIds('bereket-manav', [
       { name: 'Domates', description: 'Salkım, yerli', price: 45, unit: 'kg', category: 'Sebze', emoji: '🍅' },
       { name: 'Salatalık', description: 'Çengelköy', price: 40, unit: 'kg', category: 'Sebze', emoji: '🥒' },
@@ -77,7 +83,8 @@ export const seedShops: Shop[] = [
     deliveryFee: 0,
     freeDeliveryOver: 0,
     minOrder: 300,
-    pin: '1234',
+    ownerId: DEMO_USER_ID,
+    city: 'İstanbul',
     products: withIds('ozturk-kasap', [
       { name: 'Dana Kıyma', description: 'Orta yağlı', price: 650, unit: 'kg', category: 'Dana', emoji: '🥩' },
       { name: 'Dana Kuşbaşı', description: 'But, sinirsiz', price: 720, unit: 'kg', category: 'Dana', emoji: '🥩' },
@@ -104,7 +111,8 @@ export const seedShops: Shop[] = [
     deliveryFee: 40,
     freeDeliveryOver: 600,
     minOrder: 200,
-    pin: '1234',
+    ownerId: DEMO_USER_ID,
+    city: 'İstanbul',
     products: withIds('deniz-balik', [
       { name: 'Hamsi', description: 'Karadeniz', price: 180, unit: 'kg', category: 'Mevsim Balığı', emoji: '🐟' },
       { name: 'Levrek', description: 'Çiftlik, porsiyonluk', price: 320, unit: 'kg', category: 'Çiftlik', emoji: '🐟' },
@@ -129,7 +137,8 @@ export const seedShops: Shop[] = [
     deliveryFee: 20,
     freeDeliveryOver: 300,
     minOrder: 50,
-    pin: '1234',
+    ownerId: DEMO_USER_ID,
+    city: 'İstanbul',
     products: withIds('kalem-kirtasiye', [
       { name: 'Kurşun Kalem', description: 'HB, 12\'li', price: 60, unit: 'paket', category: 'Yazı', emoji: '✏️' },
       { name: 'Tükenmez Kalem', description: 'Mavi, 4\'lü', price: 45, unit: 'paket', category: 'Yazı', emoji: '🖊️' },
@@ -155,7 +164,8 @@ export const seedShops: Shop[] = [
     deliveryFee: 50,
     freeDeliveryOver: 1000,
     minOrder: 200,
-    pin: '1234',
+    ownerId: DEMO_USER_ID,
+    city: 'İstanbul',
     products: withIds('lale-cicekcilik', [
       { name: 'Kırmızı Gül Buketi', description: '11 adet', price: 750, unit: 'adet', category: 'Buket', emoji: '🌹' },
       { name: 'Mevsim Buketi', description: 'Karışık çiçekler', price: 550, unit: 'adet', category: 'Buket', emoji: '💐' },

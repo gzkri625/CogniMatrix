@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { NotFound } from '../App';
+import { Loading, NotFound } from '../App';
 import QtyControl from '../components/QtyControl';
 import ShopLayout from '../components/ShopLayout';
 import { money, qtyStep } from '../format';
@@ -8,7 +8,7 @@ import { useCart, useStore } from '../store';
 
 export default function Storefront() {
   const { slug = '' } = useParams();
-  const { getShop, carts, setCartQty } = useStore();
+  const { getShop, shopsLoading, carts, setCartQty } = useStore();
   const shop = getShop(slug);
   const cart = useCart(shop);
   const [q, setQ] = useState('');
@@ -16,7 +16,7 @@ export default function Storefront() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const cats = useMemo(() => ['Tümü', ...new Set(shop?.products.map((p) => p.category))], [shop]);
-  if (!shop) return <NotFound />;
+  if (!shop) return shopsLoading ? <Loading /> : <NotFound />;
 
   const qtyOf = (id: string) => carts[slug]?.find((l) => l.productId === id)?.qty ?? 0;
   const products = shop.products.filter(

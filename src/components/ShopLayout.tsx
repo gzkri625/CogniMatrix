@@ -22,7 +22,7 @@ export default function ShopLayout({ shop, children, right }: { shop: Shop; chil
             <a href={`tel:+${shop.phone}`}>+{shop.phone}</a>
           </span>
           <span className="small">
-            <Link to={`/${shop.slug}/panel`}>Esnaf girişi</Link> · <Link to="/">Esnaf Çarşı ile yapıldı</Link>
+            <Link to={`/${shop.slug}/panel`}>Esnaf paneli</Link> · <Link to="/">Esnaf Çarşı ile yapıldı</Link>
           </span>
         </div>
       </footer>

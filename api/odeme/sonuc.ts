@@ -1,17 +1,19 @@
-// POST /api/odeme/sonuc — iyzico's callbackUrl. iyzico posts the form token
-// here after the customer finishes (or abandons) payment; we send the
-// customer back to the order page, which verifies the token via /dogrula.
+// POST /api/odeme/sonuc?order=… — iyzico's callbackUrl. iyzico posts the form
+// token here after the customer finishes (or abandons) payment; we send the
+// customer back to the order page, which asks /dogrula to confirm the token.
+import { dbConfigured, getOrder } from '../_lib/db';
+
 export async function POST(req: Request) {
-  const url = new URL(req.url);
-  const shop = url.searchParams.get('shop') ?? '';
-  const order = url.searchParams.get('order') ?? '';
+  const orderId = new URL(req.url).searchParams.get('order') ?? '';
   let token = '';
   try {
     token = String((await req.formData()).get('token') ?? '');
   } catch {
     /* no body */
   }
-  const safe = (s: string) => encodeURIComponent(s.replace(/[^A-Za-z0-9-]/g, ''));
-  const target = `/#/${safe(shop)}/siparis/${safe(order)}?token=${encodeURIComponent(token)}`;
+  const order = dbConfigured() ? await getOrder(orderId).catch(() => null) : null;
+  const target = order
+    ? `/#/${order.shop_slug}/siparis/${order.id}?token=${encodeURIComponent(token)}`
+    : '/';
   return new Response(null, { status: 303, headers: { Location: target } });
 }

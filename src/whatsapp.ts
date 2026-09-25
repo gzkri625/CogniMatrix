@@ -5,7 +5,7 @@ export function orderMessage(order: Order, shop: Shop) {
   const lines = order.lines.map((l) => `• ${l.name} — ${qtyLabel(l.qty, l.unit)} = ${money(l.price * l.qty)}`);
   return [
     `Merhaba ${shop.name}, yeni sipariş 🛒`,
-    `Sipariş no: #${order.id}`,
+    `Sipariş no: #${order.code}`,
     '',
     ...lines,
     '',

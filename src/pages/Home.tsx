@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Loading, PlatformShell } from '../App';
 import { useStore } from '../store';
 import { money } from '../format';
 
 export default function Home() {
-  const { shops, resetDemo } = useStore();
+  const { shops, shopsLoading, shopsError, backend } = useStore();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('Hepsi');
 
@@ -15,13 +16,10 @@ export default function Home() {
   });
 
   return (
-    <>
-      <header className="platform-bar">
-        <div className="wrap row">
-          <Link to="/" className="logo">🏪 Esnaf Çarşı</Link>
-          <Link to="/dukkan-ac" className="btn btn-sm">Dükkanını Aç</Link>
-        </div>
-      </header>
+    <PlatformShell>
+      {backend.mode === 'demo' && (
+        <div className="banner">Demo modu: veriler yalnızca bu tarayıcıda saklanır.</div>
+      )}
 
       <section className="hero">
         <div className="wrap">
@@ -65,7 +63,17 @@ export default function Home() {
               </div>
             </Link>
           ))}
-          {list.length === 0 && <p className="muted">Aramanıza uygun dükkan bulunamadı.</p>}
+          {shopsLoading && <Loading />}
+          {shopsError && <p className="warn">Dükkanlar yüklenemedi: {shopsError}</p>}
+          {!shopsLoading && !shopsError && list.length === 0 && (
+            <p className="muted">
+              {shops.length === 0 ? (
+                <>Henüz dükkan yok. <Link to="/dukkan-ac">İlk dükkanı sen aç →</Link></>
+              ) : (
+                'Aramanıza uygun dükkan bulunamadı.'
+              )}
+            </p>
+          )}
         </div>
 
         <section className="features">
@@ -83,14 +91,13 @@ export default function Home() {
       <footer className="footer">
         <div className="wrap row">
           <span>© {new Date().getFullYear()} Esnaf Çarşı</span>
-          <button
-            className="link"
-            onClick={() => confirm('Tüm demo verileri sıfırlansın mı?') && resetDemo()}
-          >
-            Demo verilerini sıfırla
-          </button>
+          {backend.resetDemo && (
+            <button className="link" onClick={() => confirm('Tüm demo verileri sıfırlansın mı?') && backend.resetDemo!()}>
+              Demo verilerini sıfırla
+            </button>
+          )}
         </div>
       </footer>
-    </>
+    </PlatformShell>
   );
 }

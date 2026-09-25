@@ -1,38 +1,23 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { NotFound } from '../App';
+import { Loading, NotFound } from '../App';
+import AuthForm from '../components/AuthForm';
 import ShopLayout from '../components/ShopLayout';
-import { money, qtyLabel, uid } from '../format';
-import { useStore } from '../store';
+import { money, qtyLabel } from '../format';
+import { useShopOrders, useStore } from '../store';
 import type { OrderStatus, Product, Shop, Unit } from '../types';
 
 const STATUSES: OrderStatus[] = ['yeni', 'hazırlanıyor', 'yolda', 'teslim edildi', 'iptal'];
 const UNITS: Unit[] = ['adet', 'kg', 'demet', 'paket', 'litre'];
-const authKey = (slug: string) => `esnaf-carsi:panel:${slug}`;
 
 export default function Panel() {
   const { slug = '' } = useParams();
-  const { getShop } = useStore();
+  const { getShop, shopsLoading, user, authReady, backend } = useStore();
   const shop = getShop(slug);
-  const [authed, setAuthed] = useState(() => {
-    try {
-      return sessionStorage.getItem(authKey(slug)) === '1';
-    } catch {
-      return false;
-    }
-  });
   const [tab, setTab] = useState<'siparis' | 'urun' | 'dukkan'>('siparis');
 
-  if (!shop) return <NotFound />;
-
-  const logout = () => {
-    try {
-      sessionStorage.removeItem(authKey(slug));
-    } catch {
-      /* ignore */
-    }
-    setAuthed(false);
-  };
+  if (!shop) return shopsLoading ? <Loading /> : <NotFound />;
+  const isOwner = !!user && user.id === shop.ownerId;
 
   return (
     <ShopLayout
@@ -40,13 +25,22 @@ export default function Panel() {
       right={
         <span className="row gap">
           <Link to={`/${slug}`} className="link">Siteyi gör ↗</Link>
-          {authed && <button className="link" onClick={logout}>Çıkış</button>}
+          {user && <button className="link" onClick={() => backend.signOut()}>Çıkış</button>}
         </span>
       }
     >
       <main className="wrap">
-        {!authed ? (
-          <PinGate shop={shop} onOk={() => setAuthed(true)} />
+        {!authReady ? (
+          <Loading />
+        ) : !user ? (
+          <AuthForm title={`${shop.name} · Esnaf girişi`} />
+        ) : !isOwner ? (
+          <div className="card narrow center">
+            <div className="big-emoji">🚫</div>
+            <h2>Bu dükkan size ait değil</h2>
+            <p className="muted">{user.email} hesabıyla giriş yaptınız.</p>
+            <button className="btn" onClick={() => backend.signOut()}>Farklı hesapla gir</button>
+          </div>
         ) : (
           <>
             <h1>Esnaf Paneli</h1>
@@ -55,7 +49,8 @@ export default function Panel() {
               <button className={tab === 'urun' ? 'active' : ''} onClick={() => setTab('urun')}>📦 Ürünler</button>
               <button className={tab === 'dukkan' ? 'active' : ''} onClick={() => setTab('dukkan')}>⚙️ Dükkan</button>
             </div>
-            {tab === 'siparis' && <Orders shop={shop} />}
+            {/* Orders stays mounted so new-order alerts keep working on other tabs */}
+            <div hidden={tab !== 'siparis'}><Orders shop={shop} /></div>
             {tab === 'urun' && <Products shop={shop} />}
             {tab === 'dukkan' && <Settings shop={shop} />}
           </>
@@ -65,44 +60,37 @@ export default function Panel() {
   );
 }
 
-function PinGate({ shop, onOk }: { shop: Shop; onOk: () => void }) {
-  const [pin, setPin] = useState('');
-  const [err, setErr] = useState(false);
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (pin !== shop.pin) return setErr(true);
-    try {
-      sessionStorage.setItem(authKey(shop.slug), '1');
-    } catch {
-      /* ignore */
-    }
-    onOk();
-  };
-  return (
-    <form className="card narrow center" onSubmit={submit}>
-      <div className="big-emoji">🔐</div>
-      <h2>Esnaf girişi</h2>
-      <input
-        className="pin"
-        inputMode="numeric"
-        maxLength={6}
-        placeholder="PIN"
-        value={pin}
-        onChange={(e) => { setPin(e.target.value); setErr(false); }}
-        autoFocus
-      />
-      {err && <p className="warn">PIN hatalı.</p>}
-      <button className="btn btn-block">Giriş</button>
-      <p className="small muted">Demo dükkanların PIN'i: 1234</p>
-    </form>
-  );
+function beep() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain).connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.6);
+  } catch {
+    /* audio not allowed yet */
+  }
 }
 
 function Orders({ shop }: { shop: Shop }) {
-  const { orders, setOrderStatus } = useStore();
-  const mine = orders.filter((o) => o.shopSlug === shop.slug);
-  const active = mine.filter((o) => o.status !== 'teslim edildi' && o.status !== 'iptal');
-  const today = mine.filter((o) => new Date(o.createdAt).toDateString() === new Date().toDateString() && o.status !== 'iptal');
+  const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const { orders, error, setStatus } = useShopOrders(shop.slug, true, (o) => {
+    beep();
+    setFresh((f) => new Set(f).add(o.id));
+    document.title = `🔔 Yeni sipariş #${o.code}`;
+  });
+  const [statusError, setStatusError] = useState('');
+  const active = orders.filter((o) => o.status !== 'teslim edildi' && o.status !== 'iptal');
+  const today = orders.filter((o) => new Date(o.createdAt).toDateString() === new Date().toDateString() && o.status !== 'iptal');
+  const change = (id: string, status: OrderStatus) => {
+    setStatusError('');
+    document.title = 'Esnaf Çarşı';
+    setStatus(id, status).catch((e) => setStatusError((e as Error).message));
+  };
 
   return (
     <>
@@ -111,13 +99,17 @@ function Orders({ shop }: { shop: Shop }) {
         <div className="card"><span className="muted small">Bugünkü sipariş</span><b>{today.length}</b></div>
         <div className="card"><span className="muted small">Bugünkü ciro</span><b>{money(today.reduce((s, o) => s + o.total, 0))}</b></div>
       </div>
-      {mine.length === 0 && <p className="muted">Henüz sipariş yok. Sitenizi paylaşın: <code>#/{shop.slug}</code></p>}
+      {error && <p className="warn">Siparişler yüklenemedi: {error}</p>}
+      {statusError && <p className="warn">{statusError}</p>}
+      {orders.length === 0 && !error && (
+        <p className="muted">Henüz sipariş yok. Sitenizi paylaşın: <code>{window.location.href.split('#')[0]}#/{shop.slug}</code></p>
+      )}
       <div className="order-list">
-        {mine.map((o) => (
-          <div key={o.id} className={`card order status-${o.status.replace(' ', '-')}`}>
+        {orders.map((o) => (
+          <div key={o.id} className={`card order status-${o.status.replace(' ', '-')} ${fresh.has(o.id) ? 'new-order' : ''}`}>
             <div className="row">
-              <b>#{o.id} · {o.customerName}</b>
-              <select value={o.status} onChange={(e) => setOrderStatus(o.id, e.target.value as OrderStatus)}>
+              <b>#{o.code} · {o.customerName}</b>
+              <select value={o.status} onChange={(e) => change(o.id, e.target.value as OrderStatus)}>
                 {STATUSES.map((s) => <option key={s}>{s}</option>)}
               </select>
             </div>
@@ -151,12 +143,20 @@ function Orders({ shop }: { shop: Shop }) {
 }
 
 const emptyProduct = (): Product => ({
-  id: uid(), name: '', description: '', price: 0, unit: 'adet', category: '', emoji: '📦', inStock: true,
+  id: '', name: '', description: '', price: 0, unit: 'adet', category: '', emoji: '📦', inStock: true,
 });
 
 function Products({ shop }: { shop: Shop }) {
-  const { upsertProduct, deleteProduct } = useStore();
+  const { saveProduct, deleteProduct } = useStore();
   const [editing, setEditing] = useState<Product | null>(null);
+  const [error, setError] = useState('');
+  const run = (p: Promise<void>) => {
+    setError('');
+    return p.catch((e) => {
+      setError((e as Error).message);
+      throw e;
+    });
+  };
   const cats = [...new Set(shop.products.map((p) => p.category))];
 
   return (
@@ -170,9 +170,10 @@ function Products({ shop }: { shop: Shop }) {
           product={editing}
           categories={cats}
           onCancel={() => setEditing(null)}
-          onSave={(p) => { upsertProduct(shop.slug, p); setEditing(null); }}
+          onSave={(p) => run(saveProduct(shop.slug, p)).then(() => setEditing(null), () => {})}
         />
       )}
+      {error && <p className="warn">{error}</p>}
       <table className="table">
         <thead>
           <tr><th></th><th>Ürün</th><th>Kategori</th><th>Fiyat</th><th>Stok</th><th></th></tr>
@@ -186,13 +187,13 @@ function Products({ shop }: { shop: Shop }) {
               <td>{money(p.price)} / {p.unit}</td>
               <td>
                 <label className="switch">
-                  <input type="checkbox" checked={p.inStock} onChange={(e) => upsertProduct(shop.slug, { ...p, inStock: e.target.checked })} />
+                  <input type="checkbox" checked={p.inStock} onChange={(e) => run(saveProduct(shop.slug, { ...p, inStock: e.target.checked })).catch(() => {})} />
                   {p.inStock ? 'Var' : 'Yok'}
                 </label>
               </td>
               <td className="nowrap">
                 <button className="link" onClick={() => setEditing(p)}>Düzenle</button>{' '}
-                <button className="link danger" onClick={() => confirm(`"${p.name}" silinsin mi?`) && deleteProduct(shop.slug, p.id)}>Sil</button>
+                <button className="link danger" onClick={() => confirm(`"${p.name}" silinsin mi?`) && run(deleteProduct(shop.slug, p.id)).catch(() => {})}>Sil</button>
               </td>
             </tr>
           ))}
@@ -203,12 +204,13 @@ function Products({ shop }: { shop: Shop }) {
 }
 
 function ProductForm({ product, categories, onSave, onCancel }: {
-  product: Product; categories: string[]; onSave: (p: Product) => void; onCancel: () => void;
+  product: Product; categories: string[]; onSave: (p: Product) => Promise<void>; onCancel: () => void;
 }) {
   const [p, setP] = useState(product);
+  const [saving, setSaving] = useState(false);
   const set = <K extends keyof Product>(k: K, v: Product[K]) => setP((x) => ({ ...x, [k]: v }));
   return (
-    <form className="card form-grid" onSubmit={(e) => { e.preventDefault(); onSave(p); }}>
+    <form className="card form-grid" onSubmit={(e) => { e.preventDefault(); setSaving(true); onSave(p).finally(() => setSaving(false)); }}>
       <label className="w-sm">Simge<input value={p.emoji} maxLength={4} onChange={(e) => set('emoji', e.target.value)} /></label>
       <label>Ürün adı<input required value={p.name} onChange={(e) => set('name', e.target.value)} /></label>
       <label>Açıklama<input value={p.description} onChange={(e) => set('description', e.target.value)} /></label>
@@ -225,7 +227,7 @@ function ProductForm({ product, categories, onSave, onCancel }: {
         </select>
       </label>
       <div className="row gap full">
-        <button className="btn">Kaydet</button>
+        <button className="btn" disabled={saving}>{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
         <button type="button" className="link" onClick={onCancel}>Vazgeç</button>
       </div>
     </form>
@@ -236,12 +238,21 @@ function Settings({ shop }: { shop: Shop }) {
   const { updateShop } = useStore();
   const [s, setS] = useState(shop);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
   const set = <K extends keyof Shop>(k: K, v: Shop[K]) => { setS((x) => ({ ...x, [k]: v })); setSaved(false); };
   const num = (k: 'deliveryFee' | 'freeDeliveryOver' | 'minOrder') => (
     <input type="number" min="0" value={s[k]} onChange={(e) => set(k, Number(e.target.value))} />
   );
   return (
-    <form className="card form-grid" onSubmit={(e) => { e.preventDefault(); updateShop(shop.slug, s); setSaved(true); }}>
+    <form
+      className="card form-grid"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError('');
+        const { slug: _slug, ownerId: _owner, products: _products, ...patch } = s;
+        updateShop(shop.slug, patch).then(() => setSaved(true), (err) => setError((err as Error).message));
+      }}
+    >
       <label>Dükkan adı<input required value={s.name} onChange={(e) => set('name', e.target.value)} /></label>
       <label>Slogan<input value={s.tagline} onChange={(e) => set('tagline', e.target.value)} /></label>
       <label className="w-sm">Simge<input value={s.emoji} maxLength={4} onChange={(e) => set('emoji', e.target.value)} /></label>
@@ -253,10 +264,11 @@ function Settings({ shop }: { shop: Shop }) {
       <label>Teslimat ücreti (₺){num('deliveryFee')}</label>
       <label>Ücretsiz teslimat eşiği (₺, 0 = yok){num('freeDeliveryOver')}</label>
       <label>Minimum sipariş (₺){num('minOrder')}</label>
-      <label>Panel PIN<input required minLength={4} maxLength={6} value={s.pin} onChange={(e) => set('pin', e.target.value.replace(/\D/g, ''))} /></label>
+      <label>İl<input value={s.city} onChange={(e) => set('city', e.target.value)} /></label>
       <div className="row gap full">
         <button className="btn">Kaydet</button>
         {saved && <span className="ok">✓ Kaydedildi</span>}
+        {error && <span className="warn">{error}</span>}
       </div>
     </form>
   );

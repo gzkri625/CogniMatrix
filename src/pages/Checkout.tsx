@@ -1,8 +1,8 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { NotFound } from '../App';
+import { Loading, NotFound } from '../App';
 import ShopLayout from '../components/ShopLayout';
-import { money, qtyLabel, round2, uid } from '../format';
+import { money, qtyLabel, round2 } from '../format';
 import { useCart, useStore } from '../store';
 import { startPayment, usePaymentStatus } from '../payment';
 import type { Order } from '../types';
@@ -10,7 +10,7 @@ import { Totals } from './Storefront';
 
 export default function Checkout() {
   const { slug = '' } = useParams();
-  const { getShop, placeOrder } = useStore();
+  const { getShop, shopsLoading, backend, carts, clearCart } = useStore();
   const shop = getShop(slug);
   const cart = useCart(shop);
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export default function Checkout() {
     payment: 'kapıda nakit' as Order['payment'],
   });
 
-  if (!shop) return <NotFound />;
+  if (!shop) return shopsLoading ? <Loading /> : <NotFound />;
   if (cart.count === 0 && !placed.current) return <Navigate to={`/${slug}`} replace />;
 
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }));
@@ -42,44 +42,29 @@ export default function Checkout() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (belowMin || busy) return;
-    const order: Order = {
-      id: uid().toUpperCase().slice(0, 6),
-      shopSlug: slug,
-      createdAt: new Date().toISOString(),
-      ...form,
-      address: form.fulfillment === 'teslimat' ? form.address : '',
-      lines: cart.items.map(({ product, qty }) => ({
-        productId: product.id,
-        name: product.name,
-        unit: product.unit,
-        price: product.price,
-        qty,
-      })),
-      subtotal: cart.subtotal,
-      deliveryFee,
-      total,
-      status: 'yeni',
-      email: form.email || undefined,
-      ...(payOnline && { online: { state: 'bekliyor' as const } }),
-    };
-    if (payOnline) {
-      // Create the iyzico form first so a failure leaves the cart intact.
-      setBusy(true);
-      setError('');
-      try {
-        const url = await startPayment(order, shop);
-        placed.current = true;
-        placeOrder(order);
-        window.location.href = url;
-      } catch (err) {
-        setError((err as Error).message);
-        setBusy(false);
-      }
+    setBusy(true);
+    setError('');
+    let order: Order;
+    try {
+      // The backend re-prices everything from its own catalog.
+      order = await backend.placeOrder({ shopSlug: slug, ...form, items: carts[slug] ?? [] });
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
       return;
     }
     placed.current = true;
-    placeOrder(order);
-    navigate(`/${slug}/siparis/${order.id}`, { replace: true });
+    clearCart(slug);
+    const orderUrl = `/${slug}/siparis/${order.id}`;
+    if (payOnline) {
+      try {
+        window.location.href = await startPayment(order.id);
+        return;
+      } catch {
+        // order exists; its page offers "try again" / "pay at the door"
+      }
+    }
+    navigate(orderUrl, { replace: true });
   };
 
   return (

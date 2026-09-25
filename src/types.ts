@@ -23,6 +23,7 @@ export type ShopCategory =
 
 export interface Shop {
   slug: string;
+  ownerId: string;
   name: string;
   category: ShopCategory;
   tagline: string;
@@ -32,12 +33,11 @@ export interface Shop {
   phone: string; // digits only, with country code, e.g. 905321234567
   address: string;
   district: string;
-  city?: string; // il, used for iyzico addresses (default İstanbul)
+  city: string; // il, used for iyzico addresses
   hours: string;
   deliveryFee: number;
   freeDeliveryOver: number; // 0 = never free
   minOrder: number;
-  pin: string; // demo-only panel PIN, stored client side
   products: Product[];
 }
 
@@ -57,7 +57,8 @@ export interface OrderLine {
 }
 
 export interface Order {
-  id: string;
+  id: string; // random uuid; doubles as the customer's access key
+  code: string; // short number shown to customer and shopkeeper
   shopSlug: string;
   createdAt: string;
   customerName: string;
@@ -80,4 +81,21 @@ export interface Order {
     card?: string;
     error?: string;
   };
+}
+
+export interface OrderInput {
+  shopSlug: string;
+  customerName: string;
+  customerPhone: string;
+  email: string;
+  address: string;
+  note: string;
+  fulfillment: Order['fulfillment'];
+  payment: Order['payment'];
+  items: CartLine[];
+}
+
+export interface User {
+  id: string;
+  email: string;
 }
